@@ -47,7 +47,7 @@ from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
 from typing import Tuple, Union
-
+from IPython import embed
 
 MeshMouseIntersection = namedtuple('MeshMouseIntersection', 'node instance_id tri_id vert_id point_world point_local bc_coords')
 
@@ -204,6 +204,7 @@ class Viewer(moderngl_window.WindowConfig):
         self._load_cam_key = self.wnd.keys.L
         self._show_camera_target_key = self.wnd.keys.T
         self._visualize_key = self.wnd.keys.Z
+        self._visualize_image_key = self.wnd.keys.A
         self._lock_selection_key = self.wnd.keys.K
         self._mode_inspect_key = self.wnd.keys.I
         self._mode_view_key = self.wnd.keys.V
@@ -220,7 +221,8 @@ class Viewer(moderngl_window.WindowConfig):
                                 self.wnd.keys.T: "T",
                                 self.wnd.keys.X: "X",
                                 self.wnd.keys.G: "G",
-                                self.wnd.keys.Z: "Z"}
+                                self.wnd.keys.Z: "Z",
+                                self.wnd.keys.A: "A"}
 
         # Disable exit on escape key
         self.window.exit_key = None
@@ -258,6 +260,10 @@ class Viewer(moderngl_window.WindowConfig):
         self.outline_texture = self.ctx.texture(self.wnd.buffer_size, 1, dtype='f4')
         self.outline_framebuffer = self.ctx.framebuffer(color_attachments=[self.outline_texture])
 
+        # test image rendering
+        image = Image.open("../aitv_screenshot.png").transpose(Image.FLIP_TOP_BOTTOM).convert('RGB')
+        self.image_texture =  self.ctx.texture(image.size, 3, image.tobytes())
+
         # If in headlesss mode we create a framebuffer without multisampling that we can use
         # to resolve the default framebuffer before reading.
         if self.window_type == 'headless':
@@ -285,6 +291,9 @@ class Viewer(moderngl_window.WindowConfig):
         self.scene.light_mode = "dark" if C.dark_mode else "default"
         self.lock_selection = False
         self.visualize = False
+
+        # added to render image
+        self.visualize_image = False
 
         self._pan_camera = False
         self._rotate_camera = False
@@ -410,9 +419,13 @@ class Viewer(moderngl_window.WindowConfig):
 
             # If visualize is True draw a texture with the object id to the screen for debugging.
             if self.visualize:
-                self.ctx.enable_only(moderngl.NOTHING)
+                self.ctx.enable_only(moderngl.NOTHING) # disable all flags
                 self.offscreen_p_tri_id.use(location=0)
                 self.vis_prog['hash_color'] = True
+                self.vis_quad.render(self.vis_prog)
+
+            if self.visualize_image:
+                self.image_texture.use(location=0)
                 self.vis_quad.render(self.vis_prog)
 
             # FPS accounting.
@@ -672,6 +685,11 @@ class Viewer(moderngl_window.WindowConfig):
             if imgui.begin_menu("Debug", True):
                 _, self.visualize = imgui.menu_item("Visualize debug texture", self._shortcut_names[self._visualize_key],
                                                     self.visualize, True)
+
+            if imgui.begin_menu("Show Image", True):
+                _, self.visualize_image = imgui.menu_item("Visualize debug texture", self._shortcut_names[self._visualize_image_key],
+                                                    self.visualize_image, True)
+
 
                 imgui.end_menu()
 
@@ -1168,6 +1186,9 @@ class Viewer(moderngl_window.WindowConfig):
 
             elif key == self._visualize_key:
                 self.visualize = not self.visualize
+
+            elif key == self._visualize_image_key:
+                self.visualize_image = not self.visualize_image
 
             elif key == self._lock_selection_key:
                 self.lock_selection = not self.lock_selection

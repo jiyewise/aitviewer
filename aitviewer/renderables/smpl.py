@@ -39,6 +39,7 @@ from scipy.spatial.transform import Rotation
 from smplx.joint_names import JOINT_NAMES, SMPLH_JOINT_NAMES
 from typing import Union, IO
 
+from IPython import embed
 
 class SMPLSequence(Node):
     """
@@ -98,7 +99,7 @@ class SMPLSequence(Node):
             icon = "\u0091"
 
         super(SMPLSequence, self).__init__(n_frames=poses_body.shape[0], icon=icon, gui_material=False, **kwargs)
-
+        
         self.smpl_layer = smpl_layer
         self.post_fk_func = post_fk_func
 
@@ -146,6 +147,7 @@ class SMPLSequence(Node):
 
         # Nodes
         self.vertices, self.joints, self.faces, self.skeleton = self.fk()
+        # self.vertices [# Frames, 6890, 3] self.joints [# Frames, J, 3] self.skeleton <- the connection of joint #s (indicates tree structure)
 
         if self._is_rigged:
             self.skeleton_seq = Skeletons(self.joints, self.skeleton, gui_affine=False,
@@ -168,6 +170,7 @@ class SMPLSequence(Node):
 
         self.mesh_seq = Meshes(self.vertices, self.faces, is_selectable=False, gui_affine=False,
                                color=kwargs.get('color', (160 / 255, 160 / 255, 160 / 255, 1.0)), name='Mesh')
+
         self._add_node(self.mesh_seq)
 
         # Save view mode state to restore when exiting edit mode.
@@ -187,9 +190,9 @@ class SMPLSequence(Node):
         """Load a sequence downloaded from the AMASS website."""
 
         body_data = np.load(npz_data_path)
+
         if smpl_layer is None:
             smpl_layer = SMPLLayer(model_type='smplh', gender=body_data['gender'].item(), device=C.device)
-
         if log:
             print('Data keys available: {}'.format(list(body_data.keys())))
             print('{:>6d} poses of size {:>4d}.'.format(body_data['poses'].shape[0], body_data['poses'].shape[1]))
@@ -206,14 +209,14 @@ class SMPLSequence(Node):
         if fps_out is not None:
             fps_in = body_data['mocap_framerate'].tolist()
             if fps_in != fps_out:
-                ps = np.reshape(poses, [poses.shape[0], -1, 3])
-                ps_new = resample_rotations(ps, fps_in, fps_out)
-                poses = np.reshape(ps_new, [-1, poses.shape[1]])
-                trans = resample_positions(trans, fps_in, fps_out)
+                ps = np.reshape(poses, [poses.shape[0], -1, 3]) # [# of frames in original fps (120), 52, 3]
+                ps_new = resample_rotations(ps, fps_in, fps_out) # [# of frames in set fps (60) - interpolate, 52, 3]
+                poses = np.reshape(ps_new, [-1, poses.shape[1]]) # [# of frames in set fps (60) - interpolate, 156]
+                trans = resample_positions(trans, fps_in, fps_out) # [# of frames in set fps (60) - interpolate, 3]
 
         i_root_end = 3
-        i_body_end = i_root_end + smpl_layer.bm.NUM_BODY_JOINTS * 3
-        i_left_hand_end = i_body_end + smpl_layer.bm.NUM_HAND_JOINTS * 3
+        i_body_end = i_root_end + smpl_layer.bm.NUM_BODY_JOINTS * 3 # 3 + 21*3
+        i_left_hand_end = i_body_end + smpl_layer.bm.NUM_HAND_JOINTS * 3 # 3 + 21*3 + 15*3
         i_right_hand_end = i_left_hand_end + smpl_layer.bm.NUM_HAND_JOINTS * 3
 
         return cls(poses_body=poses[:, i_root_end:i_body_end],

@@ -21,7 +21,7 @@ from aitviewer.configuration import CONFIG as C
 from aitviewer.scene.material import Material
 from aitviewer.utils.so3 import euler2rot_numpy, rot2euler_numpy
 from functools import lru_cache
-
+from IPython import embed
 
 class Node(object):
     """Interface for nodes."""
