@@ -3,7 +3,9 @@
 ```commandline
 pip3 install torch==1.7.0+cu110 torchvision==0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 ```
-2. refer to smplx github to convert MANO npz model to AMASS-convertible pkl files and cleaning up chumpy
+2. refer to smplx github to convert MANO npz model to AMASS-convertible pkl files
+
+3. For smplx-chumpy issues (numpy related error) set numpy version to 1.23.1
 
 # [![AITV](https://raw.githubusercontent.com/eth-ait/aitviewer/main/aitv_logo.svg)](https://github.com/eth-ait/aitviewer) AITViewer
 
